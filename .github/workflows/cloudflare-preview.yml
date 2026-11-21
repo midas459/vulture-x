@@ -1,0 +1,39 @@
+name: Cloudflare Pages preview deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-vulture-x
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v5
+      - name: Validate Cloudflare configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 481c88e63ef93fe261511f3ab197307c
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Add CLOUDFLARE_API_TOKEN as a repository Actions secret."; exit 1; }
+      - name: Ensure Cloudflare Pages project exists
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 481c88e63ef93fe261511f3ab197307c
+        run: |
+          if ! npx --yes wrangler@4 pages project list | grep -Fq "vulture-x"; then
+            npx --yes wrangler@4 pages project create vulture-x --production-branch main
+          fi
+      - name: Deploy preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 481c88e63ef93fe261511f3ab197307c
+        run: npx --yes wrangler@4 pages deploy site --project-name vulture-x --branch preview
